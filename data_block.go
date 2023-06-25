@@ -17,7 +17,6 @@ type Options struct {
 	Api           string     `json:"type,omitempty"`          // Request url
 	ShowSysField  bool       `json:"showSysField,omitempty"`  // 展示系统字段
 	ShowGroupInfo bool       `json:"showGroupInfo,omitempty"` // 展示组信息
-	PureField     bool       `json:"pureField,omitempty"`     // 这是纯净字段
 	Ttl           string     `json:"ttl,omitempty"`           // 缓存时间，默认5s //  `${number}${'d' | 'h' | 'm' | 's'}`
 	KeyType       BLOCK_TYPE `json:"keyType,omitempty"`
 }
@@ -29,11 +28,6 @@ func init() {
 }
 
 func distDataBlock(resAll *map[string]Block, opt Options) (*map[string]Block, error) {
-	if opt.PureField {
-		opt.ShowSysField = false
-		opt.ShowGroupInfo = false
-	}
-
 	for _, item := range *resAll {
 		if !opt.ShowSysField {
 			// 不展示系统系统字段
@@ -89,7 +83,7 @@ func New(opt Options) (*DataBlockService, error) {
 	return svc, nil
 }
 
-func (svc *DataBlockService) Get(codes []string, newOpt Options) (*map[string]Block, error) {
+func (svc *DataBlockService) Get(codes []string, newOpt *Options) (*map[string]Block, error) {
 	if len(codes) <= 0 {
 		return nil, errors.New("Code不能为空")
 	}
@@ -135,12 +129,12 @@ func (svc *DataBlockService) Get(codes []string, newOpt Options) (*map[string]Bl
 	return md, nil
 }
 
-func (svc *DataBlockService) GetBlock(codes []string, opt Options) (*map[string]Block, error) {
+func (svc *DataBlockService) GetBlock(codes []string, opt *Options) (*map[string]Block, error) {
 	opt.KeyType = BT_BLOCK
 	return svc.Get(codes, opt)
 }
 
-func (svc *DataBlockService) GetKv(codes []string, opt Options) (*map[string]Block, error) {
+func (svc *DataBlockService) GetKv(codes []string, opt *Options) (*map[string]Block, error) {
 	opt.KeyType = BT_KV
 	return svc.Get(codes, opt)
 }
