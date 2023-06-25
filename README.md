@@ -4,8 +4,10 @@ Data block golang package
 ### Use
 ``` go
   import (
+    "fmt"
     dataBlock "github.com/zaxjs/data-block-golang"
   )
+
   opts := dataBlock.Options{Api: "http://localhost:8089/data-block-service-api/v1/open, Key: "Y2wwemk4aWtnMDAwMjA4bDQ4c3VrZzB5bA==", Ttl: "5m", ShowSysField: true, ShowGroupInfo: true}
   myBlock, _ := dataBlock.New(opts) // 建议配置为全局单例对象
 
