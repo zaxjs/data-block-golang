@@ -27,7 +27,7 @@ func init() {
 	log.SetFlags(0)
 }
 
-func distDataBlock(resAll *map[string]Block, opt Options) (*map[string]Block, error) {
+func distDataBlock(resAll *map[string]Block, opt *Options) (*map[string]Block, error) {
 	for _, item := range *resAll {
 		if !opt.ShowSysField {
 			// 不展示系统系统字段
@@ -73,12 +73,15 @@ func distDataBlock(resAll *map[string]Block, opt Options) (*map[string]Block, er
 }
 
 type DataBlockService struct {
-	Options Options
+	Options *Options
 }
 
 func New(opt Options) (*DataBlockService, error) {
+	myOpt := &Options{ShowSysField: false, ShowGroupInfo: false}
+	mergo.Merge(&myOpt, opt, mergo.WithOverride)
+
 	svc := &DataBlockService{
-		Options: opt,
+		Options: myOpt,
 	}
 	return svc, nil
 }
