@@ -1,4 +1,4 @@
-package main
+package data_block
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ func init() {
 	log.SetFlags(0)
 }
 
-func main() {
+func ExposeFn1() {
 	data := [2]string{"a", "b"}
 	// Marshal
 	output, err := sonic.Marshal(&data)
@@ -28,4 +28,8 @@ func main() {
 	}
 
 	fmt.Println(data)
+}
+
+func ExposeFn2() {
+	fmt.Println("test public member")
 }
