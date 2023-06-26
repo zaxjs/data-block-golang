@@ -2,7 +2,6 @@ package data_block
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,6 +10,11 @@ import (
 	"dario.cat/mergo"
 	"github.com/bytedance/sonic"
 )
+
+// golang 泛型，纯粹就是废物
+// 2023-6-26
+
+const APP_OPEN_KEY = `x-data-block-openkey`
 
 type Options struct {
 	Key           string     `json:"$id,omitempty"`           // API KEY
@@ -24,7 +28,6 @@ type Options struct {
 func init() {
 	// Do some init
 	log.SetPrefix("[data-block]: ")
-	log.SetFlags(0)
 }
 
 func distDataBlock(resAll *map[string]Block, opt *Options) (*map[string]Block, error) {
@@ -36,7 +39,7 @@ func distDataBlock(resAll *map[string]Block, opt *Options) (*map[string]Block, e
 			item.IsMultipleGroup = nil
 			item.AtUsers = nil
 			item.BlockStatus = nil
-			item.SysId = ""
+			item.SysId = 0
 			item.CreatedBy = ""
 			item.CreatedAt = nil
 			item.UpdatedBy = nil
@@ -72,13 +75,75 @@ func distDataBlock(resAll *map[string]Block, opt *Options) (*map[string]Block, e
 	return resAll, nil
 }
 
+func distDataKv(resAll *map[string]Kv, opt *Options) (*map[string]Kv, error) {
+	for _, item := range *resAll {
+		if !opt.ShowSysField {
+			// 不展示系统系统字段
+			item.BlockStatus = nil
+			item.SysId = 0
+			item.CreatedBy = ""
+			item.CreatedAt = nil
+			item.UpdatedBy = nil
+			item.UpdatedAt = nil
+			item.PublishedBy = nil
+			item.PublishedAt = nil
+			item.Description = ""
+			item.SyncAt = nil
+		}
+	}
+
+	return resAll, nil
+}
+
 type DataBlockService struct {
 	Options *Options
 }
 
+func fixBodyData[T Block | Kv](body []byte, opt *Options) (*map[string]interface{}, error) {
+	newMap := make(map[string]interface{})
+	if opt.KeyType == BT_BLOCK {
+		md := &BaseResponseModel[map[string]Block]{}
+		err := sonic.Unmarshal(body, &md)
+		if err != nil {
+			log.Println("Unmarshal err：", err)
+			return nil, err
+		}
+		dt, err := distDataBlock(&md.Data, opt)
+		if err != nil {
+			return nil, err
+		}
+		for key, value := range *dt {
+			newMap[key] = value
+		}
+	} else if opt.KeyType == BT_KV {
+		md := &BaseResponseModel[map[string]Kv]{}
+		err := sonic.Unmarshal(body, &md)
+		if err != nil {
+			log.Println("Unmarshal err：", err)
+			return nil, err
+		}
+		dt, err := distDataKv(&md.Data, opt)
+		if err != nil {
+			return nil, err
+		}
+		for key, value := range *dt {
+			newMap[key] = value
+		}
+	}
+	return &newMap, nil
+}
+
 func New(opt Options) (*DataBlockService, error) {
+	// 注入缺省
+
+	if len(opt.Api) <= 0 {
+		return nil, errors.New("api can not be empty")
+	}
+	if len(opt.Key) <= 0 {
+		return nil, errors.New("key can not be empty")
+	}
 	myOpt := &Options{ShowSysField: false, ShowGroupInfo: false}
-	mergo.Merge(&myOpt, opt, mergo.WithOverride)
+	mergo.Merge(myOpt, opt, mergo.WithOverride)
 
 	svc := &DataBlockService{
 		Options: myOpt,
@@ -86,12 +151,16 @@ func New(opt Options) (*DataBlockService, error) {
 	return svc, nil
 }
 
-func (svc *DataBlockService) Get(codes []string, newOpt *Options) (*map[string]Block, error) {
+func (svc *DataBlockService) Get(codes []string, newOpt Options) (*map[string]interface{}, error) {
 	if len(codes) <= 0 {
-		return nil, errors.New("Code不能为空")
+		return nil, errors.New("code can not be empty")
 	}
 
-	opt := svc.Options
+	if len(newOpt.KeyType) <= 0 {
+		return nil, errors.New("KeyType param lost")
+	}
+
+	opt := *svc.Options
 
 	mergo.Merge(&opt, newOpt, mergo.WithOverride)
 
@@ -99,45 +168,55 @@ func (svc *DataBlockService) Get(codes []string, newOpt *Options) (*map[string]B
 	url := opt.Api + "/" + string(opt.KeyType) + "/" + strings.Join(codes, ",")
 	method := "GET"
 	client := http.Client{}
-	req, _ := http.NewRequest(method, url, nil)
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		log.Println("Error make request:", err)
+		return nil, err
+	}
+
 	req.Header = http.Header{
 		"Content-Type": {"application/json"},
-		"APP_OPEN_KEY": {key},
 	}
+	req.Header.Add(APP_OPEN_KEY, key)
+
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println("Error sending request:", err)
+		log.Println("Error sending request:", err)
 		return nil, err
 	}
 	defer res.Body.Close()
 
-	md := &map[string]Block{}
-
 	// 读取响应内容
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		fmt.Println("读取响应内容时出错：", err)
-		return nil, err
-	}
-
-	err = sonic.Unmarshal(body, &md)
-	if err != nil {
-		fmt.Println("unmarshal时出错：", err)
-		return nil, err
-	}
+	body, _ := ioutil.ReadAll(res.Body)
 
 	if opt.KeyType == BT_BLOCK {
-		return distDataBlock(md, opt)
+		return fixBodyData[Block](body, &opt)
+	} else if opt.KeyType == BT_KV {
+		return fixBodyData[Kv](body, &opt)
 	}
-	return md, nil
+	return nil, nil
 }
 
-func (svc *DataBlockService) GetBlock(codes []string, opt *Options) (*map[string]Block, error) {
-	opt.KeyType = BT_BLOCK
+// GetBlock
+func (svc *DataBlockService) GetBlock(codes []string, newOpt *Options) (*map[string]interface{}, error) {
+	opt := *svc.Options // 值类型
+	if newOpt == nil || len(newOpt.KeyType) <= 0 {
+		opt.KeyType = BT_BLOCK
+	}
+	if newOpt != nil {
+		mergo.Merge(&opt, newOpt, mergo.WithOverride)
+	}
 	return svc.Get(codes, opt)
 }
 
-func (svc *DataBlockService) GetKv(codes []string, opt *Options) (*map[string]Block, error) {
-	opt.KeyType = BT_KV
+// GetKv
+func (svc *DataBlockService) GetKv(codes []string, newOpt *Options) (*map[string]interface{}, error) {
+	opt := *svc.Options // 值类型
+	if newOpt == nil || len(newOpt.KeyType) <= 0 {
+		opt.KeyType = BT_KV
+	}
+	if newOpt != nil {
+		mergo.Merge(&opt, newOpt, mergo.WithOverride)
+	}
 	return svc.Get(codes, opt)
 }
