@@ -21,5 +21,8 @@ Data block golang package
   fmt.Println("[GetKv]:", res2)
 ```
 
+### Test
+- go test .
+
 ### Reference
 [![Go Reference](https://pkg.go.dev/badge/github.com/zaxjs/data-block-golang/tree/main.svg)](https://pkg.go.dev/github.com/zaxjs/data-block-golang/tree/main)
