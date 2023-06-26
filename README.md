@@ -22,7 +22,9 @@ Data block golang package
 ```
 
 ### Test
-- go test .
+``` go
+go test .
+```
 
-### Reference
+### Docs
 [![Go Reference](https://pkg.go.dev/badge/github.com/zaxjs/data-block-golang/tree/main.svg)](https://pkg.go.dev/github.com/zaxjs/data-block-golang/tree/main)
