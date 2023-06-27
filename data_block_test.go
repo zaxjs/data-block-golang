@@ -46,11 +46,11 @@ func TestGet(t *testing.T) {
 	CODES := []string{"TEST_BLOCK", "TEST_MISC"}
 	inst, err := New(Options{Api: api, Key: key})
 	if err != nil {
-		log.Println("New error", err)
+		log.Println("[Get] error", err)
 	}
-	res, err := inst.Get(CODES, Options{KeyType: BT_BLOCK, ShowSysField: true})
+	res, err := inst.Get(CODES, Options{KeyType: BT_BLOCK, ShowSysField: true, ShowRawData: false})
 	if err != nil {
-		log.Println("Get error", err)
+		log.Println("[Get] error", err)
 	}
 
 	resB, _ := sonic.Marshal(res)
@@ -59,7 +59,7 @@ func TestGet(t *testing.T) {
 
 	for k, v := range md {
 		if *v.BlockCode != k {
-			t.Errorf("BlockCode" + " not equal to the response of Key")
+			t.Errorf("[Get]" + " not equal to the response of Key")
 		}
 	}
 }
@@ -68,11 +68,11 @@ func TestGetBlock(t *testing.T) {
 	CODES := []string{"TEST_BLOCK", "TEST_MISC"}
 	inst, err := New(Options{Api: api, Key: key})
 	if err != nil {
-		log.Println("New error", err)
+		log.Println("[Block] error", err)
 	}
-	res, err := inst.GetBlock(CODES, nil)
+	res, err := inst.Block(CODES, nil)
 	if err != nil {
-		log.Println("GetBlock error", err)
+		log.Println("[Block] error", err)
 	}
 	resB, _ := sonic.Marshal(res)
 	md := map[string]Block{}
@@ -80,13 +80,13 @@ func TestGetBlock(t *testing.T) {
 
 	for k, v := range md {
 		if *v.BlockCode != k {
-			t.Errorf("BlockCode fn1" + " not equal to the response of Key")
+			t.Errorf("[Block] fn1" + " not equal to the response of Key")
 		}
 	}
 
-	res2, err := inst.GetBlock(CODES, &Options{ShowSysField: true, ShowGroupInfo: true})
+	res2, err := inst.Block(CODES, &Options{ShowSysField: true, ShowGroupInfo: true, ShowRawData: false})
 	if err != nil {
-		log.Println("GetBlock error", err)
+		log.Println("[Block] error", err)
 	}
 
 	resB2, _ := sonic.Marshal(res2)
@@ -95,20 +95,20 @@ func TestGetBlock(t *testing.T) {
 
 	for k, v := range md2 {
 		if *v.BlockCode != k {
-			t.Errorf("BlockCode fn2" + " not equal to the response of Key")
+			t.Errorf("[Block] fn2" + " not equal to the response of Key")
 		}
 	}
 }
 
 func TestGetKv(t *testing.T) {
-	CODES := []string{"TEST_KEY", "WX_HOME_BANNER"}
+	CODES := []string{"TEST_KEY", "WX_HOME_FOCUS"}
 	inst, err := New(Options{Api: api, Key: key})
 	if err != nil {
-		log.Println("New error", err)
+		log.Println("[Kv] error", err)
 	}
-	res, err := inst.GetKv(CODES, nil)
+	res, err := inst.Kv(CODES, nil)
 	if err != nil {
-		log.Println("GetKv error", err)
+		log.Println("[Kv] error", err)
 	}
 
 	resB, _ := sonic.Marshal(res)
@@ -117,13 +117,13 @@ func TestGetKv(t *testing.T) {
 
 	for k, v := range md {
 		if v.K != k {
-			t.Errorf("BlockCode fn1" + " not equal to the response of Key")
+			t.Errorf("[Kv] fn1" + " not equal to the response of Key")
 		}
 	}
 
-	res2, err := inst.GetKv(CODES, &Options{ShowSysField: true, ShowGroupInfo: true})
+	res2, err := inst.Kv(CODES, &Options{ShowSysField: true, ShowGroupInfo: true, ShowRawData: false})
 	if err != nil {
-		log.Println("GetKv error", err)
+		log.Println("[Kv] error", err)
 	}
 
 	resB2, _ := sonic.Marshal(res2)
@@ -132,7 +132,7 @@ func TestGetKv(t *testing.T) {
 
 	for k, v := range md2 {
 		if v.K != k {
-			t.Errorf("BlockCode fn2" + " not equal to the response of Key")
+			t.Errorf("[Kv] fn2" + " not equal to the response of Key")
 		}
 	}
 }

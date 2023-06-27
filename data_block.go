@@ -21,6 +21,7 @@ type Options struct {
 	Api           string     `json:"type,omitempty"`          // Request url
 	ShowSysField  bool       `json:"showSysField,omitempty"`  // 展示系统字段
 	ShowGroupInfo bool       `json:"showGroupInfo,omitempty"` // 展示组信息
+	ShowRawData   bool       `json:"showRawData,omitempty"`   // 展示完整字段
 	Ttl           string     `json:"ttl,omitempty"`           // 缓存时间，默认5s //  `${number}${'d' | 'h' | 'm' | 's'}`
 	KeyType       BLOCK_TYPE `json:"keyType,omitempty"`
 }
@@ -30,10 +31,10 @@ func init() {
 	log.SetPrefix("[data-block]: ")
 }
 
-func distDataBlock(resAll *map[string]Block, opt *Options) (*map[string]Block, error) {
+func distDataBlock(resAll *map[string]Block, opt Options) (*map[string]Block, error) {
 	for _, item := range *resAll {
 		if !opt.ShowSysField {
-			// 不展示系统系统字段
+			// Remove system fields
 			item.Slugs = ""
 			item.Stage = ""
 			item.IsMultipleGroup = nil
@@ -52,7 +53,7 @@ func distDataBlock(resAll *map[string]Block, opt *Options) (*map[string]Block, e
 			item.SyncAt = nil
 		}
 		if !opt.ShowGroupInfo {
-			// 不展示组信息
+			// Remove group field
 			if len(item.BlockData) > 0 {
 				tmpSub := []map[string]interface{}{}
 				for _, sub := range item.BlockData {
@@ -75,10 +76,10 @@ func distDataBlock(resAll *map[string]Block, opt *Options) (*map[string]Block, e
 	return resAll, nil
 }
 
-func distDataKv(resAll *map[string]Kv, opt *Options) (*map[string]Kv, error) {
+func distDataKv(resAll *map[string]Kv, opt Options) (*map[string]Kv, error) {
 	for _, item := range *resAll {
 		if !opt.ShowSysField {
-			// 不展示系统系统字段
+			// Remove system fields
 			item.BlockStatus = nil
 			item.SysId = 0
 			item.CreatedBy = ""
@@ -99,8 +100,9 @@ type DataBlockService struct {
 	Options *Options
 }
 
-func fixBodyData[T Block | Kv](body []byte, opt *Options) (*map[string]interface{}, error) {
+func fixBodyData[T Block | Kv](body []byte, opt Options) (*map[string]interface{}, error) {
 	newMap := make(map[string]interface{})
+
 	if opt.KeyType == BT_BLOCK {
 		md := &BaseResponseModel[map[string]Block]{}
 		err := sonic.Unmarshal(body, &md)
@@ -134,7 +136,7 @@ func fixBodyData[T Block | Kv](body []byte, opt *Options) (*map[string]interface
 }
 
 func New(opt Options) (*DataBlockService, error) {
-	// 注入缺省
+	// inject default params
 
 	if len(opt.Api) <= 0 {
 		return nil, errors.New("api can not be empty")
@@ -142,7 +144,7 @@ func New(opt Options) (*DataBlockService, error) {
 	if len(opt.Key) <= 0 {
 		return nil, errors.New("key can not be empty")
 	}
-	myOpt := &Options{ShowSysField: false, ShowGroupInfo: false}
+	myOpt := &Options{ShowSysField: false, ShowGroupInfo: false, ShowRawData: false}
 	mergo.Merge(myOpt, opt, mergo.WithOverride)
 
 	svc := &DataBlockService{
@@ -160,7 +162,7 @@ func (svc *DataBlockService) Get(codes []string, newOpt Options) (*map[string]in
 		return nil, errors.New("KeyType param lost")
 	}
 
-	opt := *svc.Options
+	opt := *svc.Options // Get real value, prevent being polluted
 
 	mergo.Merge(&opt, newOpt, mergo.WithOverride)
 
@@ -186,20 +188,35 @@ func (svc *DataBlockService) Get(codes []string, newOpt Options) (*map[string]in
 	}
 	defer res.Body.Close()
 
-	// 读取响应内容
+	// Get body from api response
 	body, _ := ioutil.ReadAll(res.Body)
 
+	if opt.ShowRawData {
+		md := &BaseResponseModel[map[string]interface{}]{}
+		err := sonic.Unmarshal(body, &md)
+		if err != nil {
+			log.Println("Unmarshal err：", err)
+			return nil, err
+		}
+		return &md.Data, nil
+	}
+
 	if opt.KeyType == BT_BLOCK {
-		return fixBodyData[Block](body, &opt)
+		return fixBodyData[Block](body, opt)
 	} else if opt.KeyType == BT_KV {
-		return fixBodyData[Kv](body, &opt)
+		return fixBodyData[Kv](body, opt)
 	}
 	return nil, nil
 }
 
-// GetBlock
+// Deprecated: GetBlock is deprecated.
 func (svc *DataBlockService) GetBlock(codes []string, newOpt *Options) (*map[string]interface{}, error) {
-	opt := *svc.Options // 值类型
+	return svc.Block(codes, newOpt)
+}
+
+// Block
+func (svc *DataBlockService) Block(codes []string, newOpt *Options) (*map[string]interface{}, error) {
+	opt := *svc.Options // Get real value, prevent being polluted
 	if newOpt == nil || len(newOpt.KeyType) <= 0 {
 		opt.KeyType = BT_BLOCK
 	}
@@ -209,9 +226,14 @@ func (svc *DataBlockService) GetBlock(codes []string, newOpt *Options) (*map[str
 	return svc.Get(codes, opt)
 }
 
-// GetKv
+// Deprecated: GetKv is deprecated.
 func (svc *DataBlockService) GetKv(codes []string, newOpt *Options) (*map[string]interface{}, error) {
-	opt := *svc.Options // 值类型
+	return svc.Kv(codes, newOpt)
+}
+
+// Kv
+func (svc *DataBlockService) Kv(codes []string, newOpt *Options) (*map[string]interface{}, error) {
+	opt := *svc.Options // Get real value, prevent being polluted
 	if newOpt == nil || len(newOpt.KeyType) <= 0 {
 		opt.KeyType = BT_KV
 	}

@@ -7,7 +7,7 @@ import (
 type Kv struct {
 	KvId           string       `json:"kvId,omitempty"`
 	K              string       `json:"k,omitempty"`
-	V              string       `json:"v,omitempty"`
+	V              interface{}  `json:"v,omitempty"`
 	Description    string       `json:"description,omitempty"`
 	OrganizationId string       `json:"organizationId,omitempty"`
 	BlockStatus    *TEXT_STATUS `json:"blockStatus,omitempty"`
