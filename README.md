@@ -8,13 +8,13 @@ Data block golang package
     dataBlock "github.com/zaxjs/data-block-golang"
   )
 
-  opts := dataBlock.Options{Api: "API", Key: "KEY", Ttl: "5m", ShowSysField: true, ShowGroupInfo: true, ShowRawData: false}
+  opts := dataBlock.Options{Api: "API", Key: "KEY", Ttl: "5m", ShowSysField: true, ShowGroupInfo: true, }
   myBlock, _ := dataBlock.New(opts) // 建议配置为全局单例对象
 
   res1, _ := myBlock.Block([]string{ "TEST_BLOCK","TEST_MISC" }, nil)
   fmt.Println("[Block]:", res1)
 
-  res2, _ := myBlock.Block([]string{ "TEST_BLOCK","TEST_MISC" }, &dataBlock.Options{ShowSysField: false, ShowGroupInfo: false, ShowRawData: false})
+  res2, _ := myBlock.Block([]string{ "TEST_BLOCK","TEST_MISC" }, &dataBlock.Options{ShowSysField: false, ShowGroupInfo: false, })
   fmt.Println("[Block]:", res2)
 
   res3, _ := myBlock.Kv([]string{ "TEST_BLOCK","TEST_MISC" })

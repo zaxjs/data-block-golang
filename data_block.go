@@ -21,7 +21,6 @@ type Options struct {
 	Api           string     `json:"type,omitempty"`          // Request url
 	ShowSysField  bool       `json:"showSysField,omitempty"`  // 展示系统字段
 	ShowGroupInfo bool       `json:"showGroupInfo,omitempty"` // 展示组信息
-	ShowRawData   bool       `json:"showRawData,omitempty"`   // 展示完整字段
 	Ttl           string     `json:"ttl,omitempty"`           // 缓存时间，默认5s //  `${number}${'d' | 'h' | 'm' | 's'}`
 	KeyType       BLOCK_TYPE `json:"keyType,omitempty"`
 }
@@ -144,7 +143,7 @@ func New(opt Options) (*DataBlockService, error) {
 	if len(opt.Key) <= 0 {
 		return nil, errors.New("key can not be empty")
 	}
-	myOpt := &Options{ShowSysField: false, ShowGroupInfo: false, ShowRawData: false}
+	myOpt := &Options{ShowSysField: false, ShowGroupInfo: false}
 	mergo.Merge(myOpt, opt, mergo.WithOverride)
 
 	svc := &DataBlockService{
@@ -191,22 +190,20 @@ func (svc *DataBlockService) Get(codes []string, newOpt Options) (*map[string]in
 	// Get body from api response
 	body, _ := ioutil.ReadAll(res.Body)
 
-	if opt.ShowRawData {
-		md := &BaseResponseModel[map[string]interface{}]{}
-		err := sonic.Unmarshal(body, &md)
-		if err != nil {
-			log.Println("Unmarshal err：", err)
-			return nil, err
-		}
-		return &md.Data, nil
-	}
-
 	if opt.KeyType == BT_BLOCK {
 		return fixBodyData[Block](body, opt)
 	} else if opt.KeyType == BT_KV {
 		return fixBodyData[Kv](body, opt)
 	}
-	return nil, nil
+
+	// 展示原始信息
+	md := &BaseResponseModel[map[string]interface{}]{}
+	err = sonic.Unmarshal(body, &md)
+	if err != nil {
+		log.Println("Unmarshal err：", err)
+		return nil, err
+	}
+	return &md.Data, nil
 }
 
 // Deprecated: GetBlock is deprecated.

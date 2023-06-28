@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	api = "http://localhost:8089/data-block-service-api/v1/open"
+	api = "https://abyss-dev.zan.fun/data-block-service-api/v1/open"
 	key = "Y2wwemk4aWtnMDAwMjA4bDQ4c3VrZzB5bA=="
 )
 
@@ -48,7 +48,7 @@ func TestGet(t *testing.T) {
 	if err != nil {
 		log.Println("[Get] error", err)
 	}
-	res, err := inst.Get(CODES, Options{KeyType: BT_BLOCK, ShowSysField: true, ShowRawData: false})
+	res, err := inst.Get(CODES, Options{KeyType: BT_BLOCK, ShowSysField: true})
 	if err != nil {
 		log.Println("[Get] error", err)
 	}
@@ -84,7 +84,7 @@ func TestGetBlock(t *testing.T) {
 		}
 	}
 
-	res2, err := inst.Block(CODES, &Options{ShowSysField: true, ShowGroupInfo: true, ShowRawData: false})
+	res2, err := inst.Block(CODES, &Options{ShowSysField: true, ShowGroupInfo: true})
 	if err != nil {
 		log.Println("[Block] error", err)
 	}
@@ -121,7 +121,7 @@ func TestGetKv(t *testing.T) {
 		}
 	}
 
-	res2, err := inst.Kv(CODES, &Options{ShowSysField: true, ShowGroupInfo: true, ShowRawData: false})
+	res2, err := inst.Kv(CODES, &Options{ShowSysField: true, ShowGroupInfo: true})
 	if err != nil {
 		log.Println("[Kv] error", err)
 	}
