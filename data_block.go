@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"reflect"
 	"strings"
 
 	"dario.cat/mergo"
@@ -36,24 +35,22 @@ func distData[T Block | Kv](resAll *map[string]T, opt Options) (*map[string]T, e
 	for key, item := range *resAll {
 		if !opt.ShowSysField {
 			// Remove system fields
-			v := reflect.ValueOf(&item).Elem()
-			v.FieldByName("Slugs").Set(reflect.ValueOf(""))
-			v.FieldByName("Stage").Set(reflect.ValueOf(nil))
-			v.FieldByName("Description").Set(reflect.ValueOf(nil))
-			v.FieldByName("IsMultipleGroup").Set(reflect.ValueOf(nil))
-			v.FieldByName("AtUsers").Set(reflect.ValueOf(nil))
-			v.FieldByName("BlockStatus").Set(reflect.ValueOf(nil))
-			v.FieldByName("SysId").Set(reflect.ValueOf(0))
-			v.FieldByName("CreatedBy").Set(reflect.ValueOf(""))
-			v.FieldByName("CreatedAt").Set(reflect.ValueOf(nil))
-			v.FieldByName("UpdatedBy").Set(reflect.ValueOf(nil))
-			v.FieldByName("UpdatedAt").Set(reflect.ValueOf(nil))
-			v.FieldByName("PublishedBy").Set(reflect.ValueOf(nil))
-			v.FieldByName("PublishedAt").Set(reflect.ValueOf(nil))
-			v.FieldByName("SpaceName").Set(reflect.ValueOf(""))
-			v.FieldByName("SpaceId").Set(reflect.ValueOf(""))
-			v.FieldByName("ModelCode").Set(reflect.ValueOf(""))
-			v.FieldByName("SyncAt").Set(reflect.ValueOf(nil))
+			item.Slugs = ""
+			item.Stage = ""
+			item.IsMultipleGroup = nil
+			item.AtUsers = nil
+			item.BlockStatus = nil
+			item.SysId = 0
+			item.CreatedBy = ""
+			item.CreatedAt = nil
+			item.UpdatedBy = nil
+			item.UpdatedAt = nil
+			item.PublishedBy = nil
+			item.PublishedAt = nil
+			item.SpaceName = ""
+			item.SpaceId = ""
+			item.ModelCode = ""
+			item.SyncAt = nil
 
 			(*resAll)[key] = item // Update the modified item in the map
 		}
