@@ -29,7 +29,8 @@ type Block struct {
 	BlockCode       *string                  `json:"blockCode,omitempty"`
 	BlockData       []map[string]interface{} `json:"blockData,omitempty"`
 	Slugs           string                   `json:"slugs,omitempty"`
-	Stage           string                   `json:"stage,omitempty"`
+	Stage           *string                  `json:"stage,omitempty"`
+	Description     *string                  `json:"description,omitempty"`
 	IsMultipleGroup *string                  `json:"isMultipleGroup,omitempty"`
 	AtUsers         []string                 `json:"atUsers,omitempty"`
 	SpaceId         string                   `json:"spaceId,omitempty"`

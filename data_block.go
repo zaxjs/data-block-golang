@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"dario.cat/mergo"
@@ -13,6 +14,7 @@ import (
 
 // golang 泛型，纯粹就是废物
 // 2023-6-26
+// @see https://github.com/golang/go/issues/48522
 
 const APP_OPEN_KEY = `x-data-block-openkey`
 
@@ -30,33 +32,37 @@ func init() {
 	log.SetPrefix("[data-block]: ")
 }
 
-func distDataBlock(resAll *map[string]Block, opt Options) (*map[string]Block, error) {
-	for _, item := range *resAll {
+func distData[T Block | Kv](resAll *map[string]T, opt Options) (*map[string]T, error) {
+	for key, item := range *resAll {
 		if !opt.ShowSysField {
 			// Remove system fields
-			item.Slugs = ""
-			item.Stage = ""
-			item.IsMultipleGroup = nil
-			item.AtUsers = nil
-			item.BlockStatus = nil
-			item.SysId = 0
-			item.CreatedBy = ""
-			item.CreatedAt = nil
-			item.UpdatedBy = nil
-			item.UpdatedAt = nil
-			item.PublishedBy = nil
-			item.PublishedAt = nil
-			item.SpaceName = ""
-			item.SpaceId = ""
-			item.ModelCode = ""
-			item.SyncAt = nil
+			v := reflect.ValueOf(&item).Elem()
+			v.FieldByName("Slugs").Set(reflect.ValueOf(""))
+			v.FieldByName("Stage").Set(reflect.ValueOf(nil))
+			v.FieldByName("Description").Set(reflect.ValueOf(nil))
+			v.FieldByName("IsMultipleGroup").Set(reflect.ValueOf(nil))
+			v.FieldByName("AtUsers").Set(reflect.ValueOf(nil))
+			v.FieldByName("BlockStatus").Set(reflect.ValueOf(nil))
+			v.FieldByName("SysId").Set(reflect.ValueOf(0))
+			v.FieldByName("CreatedBy").Set(reflect.ValueOf(""))
+			v.FieldByName("CreatedAt").Set(reflect.ValueOf(nil))
+			v.FieldByName("UpdatedBy").Set(reflect.ValueOf(nil))
+			v.FieldByName("UpdatedAt").Set(reflect.ValueOf(nil))
+			v.FieldByName("PublishedBy").Set(reflect.ValueOf(nil))
+			v.FieldByName("PublishedAt").Set(reflect.ValueOf(nil))
+			v.FieldByName("SpaceName").Set(reflect.ValueOf(""))
+			v.FieldByName("SpaceId").Set(reflect.ValueOf(""))
+			v.FieldByName("ModelCode").Set(reflect.ValueOf(""))
+			v.FieldByName("SyncAt").Set(reflect.ValueOf(nil))
+
+			(*resAll)[key] = item // Update the modified item in the map
 		}
 		if !opt.ShowGroupInfo {
 			// Remove group field
 			if len(item.BlockData) > 0 {
-				tmpSub := []map[string]interface{}{}
+				tmpSub := []BlockData{}
 				for _, sub := range item.BlockData {
-					subMd := &BlockData{}
+					subMd := BlockData{}
 					mySubByte, err := sonic.Marshal(sub)
 					if err != nil {
 						return nil, err
@@ -68,6 +74,7 @@ func distDataBlock(resAll *map[string]Block, opt Options) (*map[string]Block, er
 					tmpSub = append(tmpSub, subMd.Data...)
 				}
 				item.BlockData = tmpSub
+				(*resAll)[key] = item // Update the modified item in the map
 			}
 		}
 	}
@@ -75,66 +82,30 @@ func distDataBlock(resAll *map[string]Block, opt Options) (*map[string]Block, er
 	return resAll, nil
 }
 
-func distDataKv(resAll *map[string]Kv, opt Options) (*map[string]Kv, error) {
-	for _, item := range *resAll {
-		if !opt.ShowSysField {
-			// Remove system fields
-			item.BlockStatus = nil
-			item.SysId = 0
-			item.CreatedBy = ""
-			item.CreatedAt = nil
-			item.UpdatedBy = nil
-			item.UpdatedAt = nil
-			item.PublishedBy = nil
-			item.PublishedAt = nil
-			item.Description = ""
-			item.SyncAt = nil
-		}
+func fixBodyData[T Block | Kv](body []byte, opt Options) (*map[string]T, error) {
+	newMap := make(map[string]T)
+
+	md := &BaseResponseModel[map[string]T]{}
+	err := sonic.Unmarshal(body, &md)
+	if err != nil {
+		log.Println("Unmarshal err：", err)
+		return nil, err
 	}
-
-	return resAll, nil
-}
-
-type DataBlockService struct {
-	Options *Options
-}
-
-func fixBodyData[T Block | Kv](body []byte, opt Options) (*map[string]interface{}, error) {
-	newMap := make(map[string]interface{})
-
-	if opt.KeyType == BT_BLOCK {
-		md := &BaseResponseModel[map[string]Block]{}
-		err := sonic.Unmarshal(body, &md)
-		if err != nil {
-			log.Println("Unmarshal err：", err)
-			return nil, err
-		}
-		dt, err := distDataBlock(&md.Data, opt)
-		if err != nil {
-			return nil, err
-		}
-		for key, value := range *dt {
-			newMap[key] = value
-		}
-	} else if opt.KeyType == BT_KV {
-		md := &BaseResponseModel[map[string]Kv]{}
-		err := sonic.Unmarshal(body, &md)
-		if err != nil {
-			log.Println("Unmarshal err：", err)
-			return nil, err
-		}
-		dt, err := distDataKv(&md.Data, opt)
-		if err != nil {
-			return nil, err
-		}
-		for key, value := range *dt {
-			newMap[key] = value
-		}
+	dt, err := distData(&md.Data, opt)
+	if err != nil {
+		return nil, err
+	}
+	for key, value := range *dt {
+		newMap[key] = value
 	}
 	return &newMap, nil
 }
 
-func New(opt Options) (*DataBlockService, error) {
+type DataBlockService[T Block | Kv] struct {
+	Options *Options
+}
+
+func New[T Block | Kv](opt Options) (*DataBlockService[T], error) {
 	// inject default params
 
 	if len(opt.Api) <= 0 {
@@ -146,13 +117,13 @@ func New(opt Options) (*DataBlockService, error) {
 	myOpt := &Options{ShowSysField: false, ShowGroupInfo: false}
 	mergo.Merge(myOpt, opt, mergo.WithOverride)
 
-	svc := &DataBlockService{
+	svc := &DataBlockService[T]{
 		Options: myOpt,
 	}
 	return svc, nil
 }
 
-func (svc *DataBlockService) Get(codes []string, newOpt Options) (*map[string]interface{}, error) {
+func (svc *DataBlockService[T]) Get(codes []string, newOpt Options) (*map[string]T, error) {
 	if len(codes) <= 0 {
 		return nil, errors.New("code can not be empty")
 	}
@@ -190,14 +161,12 @@ func (svc *DataBlockService) Get(codes []string, newOpt Options) (*map[string]in
 	// Get body from api response
 	body, _ := ioutil.ReadAll(res.Body)
 
-	if opt.KeyType == BT_BLOCK {
-		return fixBodyData[Block](body, opt)
-	} else if opt.KeyType == BT_KV {
-		return fixBodyData[Kv](body, opt)
+	if opt.KeyType == BT_BLOCK || opt.KeyType == BT_KV {
+		return fixBodyData[T](body, opt)
 	}
 
 	// 展示原始信息
-	md := &BaseResponseModel[map[string]interface{}]{}
+	md := &BaseResponseModel[map[string]T]{}
 	err = sonic.Unmarshal(body, &md)
 	if err != nil {
 		log.Println("Unmarshal err：", err)
@@ -207,12 +176,12 @@ func (svc *DataBlockService) Get(codes []string, newOpt Options) (*map[string]in
 }
 
 // Deprecated: GetBlock is deprecated.
-func (svc *DataBlockService) GetBlock(codes []string, newOpt *Options) (*map[string]interface{}, error) {
+func (svc *DataBlockService[T]) GetBlock(codes []string, newOpt *Options) (*map[string]T, error) {
 	return svc.Block(codes, newOpt)
 }
 
 // Block
-func (svc *DataBlockService) Block(codes []string, newOpt *Options) (*map[string]interface{}, error) {
+func (svc *DataBlockService[T]) Block(codes []string, newOpt *Options) (*map[string]T, error) {
 	opt := *svc.Options // Get real value, prevent being polluted
 	if newOpt == nil || len(newOpt.KeyType) <= 0 {
 		opt.KeyType = BT_BLOCK
@@ -224,12 +193,12 @@ func (svc *DataBlockService) Block(codes []string, newOpt *Options) (*map[string
 }
 
 // Deprecated: GetKv is deprecated.
-func (svc *DataBlockService) GetKv(codes []string, newOpt *Options) (*map[string]interface{}, error) {
+func (svc *DataBlockService[T]) GetKv(codes []string, newOpt *Options) (*map[string]T, error) {
 	return svc.Kv(codes, newOpt)
 }
 
 // Kv
-func (svc *DataBlockService) Kv(codes []string, newOpt *Options) (*map[string]interface{}, error) {
+func (svc *DataBlockService[T]) Kv(codes []string, newOpt *Options) (*map[string]T, error) {
 	opt := *svc.Options // Get real value, prevent being polluted
 	if newOpt == nil || len(newOpt.KeyType) <= 0 {
 		opt.KeyType = BT_KV
